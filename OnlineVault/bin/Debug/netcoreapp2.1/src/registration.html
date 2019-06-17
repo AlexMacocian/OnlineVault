@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="/css/bootstrap.css">
+		<script src="/js/func.js"></script>
+	</head>
+<body>
+
+<div class="container-fluid">
+<h2 style="background-color:dodgerblue; color:white; text-align:center; padding:10px; padding-top:0px">Create your vault</h2>
+<form class="border border-primary" style="height:90vh; padding:20px" action="/register" method="POST">
+	<label class="d-none" id="errorLabel"></label>
+	<div class="input-group input-group-sm mb-3">
+		<div class="input-group-prepend">
+			<span class="input-group-text" id="inputGroup-sizing-sm" style="background-color:dodgerblue; color:white; width:150px">Username</span>
+		</div>
+		<input id="inputUsername" class="form-control border border-primary" type="text" name="username" value="" placeholder="Enter username">
+	</div>
+	<div class="input-group input-group-sm mb-3">
+		<div class="input-group-prepend">
+			<span class="input-group-text" id="inputGroup-sizing-sm" style="background-color:dodgerblue; color:white; width:150px">Password</span>
+		</div>
+		<input id="inputPassword" class="form-control border border-primary" type="password" name="password" value="" placeholder="Enter password">
+	</div>
+	<div class="input-group input-group-sm mb-3">
+		<div class="input-group-prepend">
+			<span class="input-group-text" id="inputGroup-sizing-sm" style="background-color:dodgerblue; color:white; width:150px">Confirm Password</span>
+		</div>
+		<input id="inputConfirmPassword" class="form-control border border-primary" type="password" name="confirmpassword" value="" placeholder="Re-enter password">
+	</div>
+	<input onclick="goToFirstPage()" class="btn btn-outline-primary" style="float:left; cursor:pointer" value="Go back"></input>
+	<input onclick="sendUserInfo()" class="btn btn-outline-primary" style="float:right; cursor:pointer" value="Register"></input>
+</form> 
+</div>
+
+<script>
+function sendUserInfo(){
+	method_post("/register", "Username=" + document.getElementById("inputUsername").value + "&Password=" + document.getElementById("inputPassword").value
+	+ "&ConfirmPassword=" + document.getElementById("inputConfirmPassword").value, post_callback);
+}
+
+function post_callback(){
+	if (this.readyState == 4 && this.status == 200) {
+		var xmlDoc = this.responseXML;
+		var errorCode = xmlDoc.getElementsByTagName("code")[0].childNodes[0].nodeValue;
+		var errorText = xmlDoc.getElementsByTagName("text")[0].childNodes[0].nodeValue;
+		if(errorCode == "Success"){
+			document.location.href = errorText;
+		}
+		else{
+			document.getElementById("errorLabel").classList.add("text-danger");
+			document.getElementById("errorLabel").classList.remove("d-none");
+			document.getElementById("errorLabel").innerText = errorText;
+		}
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="/css/bootstrap.css">
+		<link rel="stylesheet" href="/css/dashboard.css">
+		<script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+		<script src="/js/func.js"></script>
+		<script src="/js/bootstrap.min.js"></script>
+	</head>
+<body>
+<div class="container-fluid" style="height:100vh">	
+	<div class="row" style="background-color:dodgerblue;">
+		<div class="h1 col-xl-11" style="text-align:center; color:white;">Welcome to your dashboard</div>
+		<div class="col-xl-1">
+			<button class="btn btn-outline-primary" style="background-color:white; margin:12px; width:72px; padding:1px" onclick="logout()">Logout</button>
+		</div>
+	</div>
+	<div class="row" style="max-height:90vh; height:90vh;">
+		<div class="col-xl-3 border border-primary">
+			<h2 style="color:dodgerblue; text-align:center">Domains</h2>			
+			<ul id="domainList" class="scrollbar scrollbar-info square" style="overflow:scroll; overflow-x:hidden; overflow-y:auto; max-height:80vh; padding-left: 0">
+			</ul>		
+		</div>
+		<div class="col-xl-9 border border-primary">
+			<div class="container-fluid">
+				<div class="row-xl-9">
+					<h2 class="d-inline" style="color:dodgerblue; text-align:center">Vault view</h2>
+					<button onclick="sendVaultData()" class="btn btn-outline-primary d-inline" style="float:right; margin:4px">Save</button>
+					<button onclick="requestVault()" class="btn btn-outline-primary d-inline" style="float:right; margin:4px">Undo</button>
+					<div class="border border-primary" style="margin-top:10px; margin-bottom:10px"></div>
+					<div class="input-group input-group-sm mb-3">
+						<div class="input-group-prepend">
+							<span class="input-group-text" id="inputGroup-sizing-sm" style="background-color:dodgerblue; color:white; width:110px">Domain name</span>
+						</div>
+						<input id="domainName" onchange="domainName_onChange()" type="text" class="form-control"/>
+						<div class="input-group-append">
+							<button id="domainRemoveButton" onclick="removeSelectedDomain()" class="btn btn-outline-primary input-group-button">Remove</button>
+						</div>
+					</div>
+				</div>
+				<div class="row" style="height:70vh">
+					<div class="col-xl-3 border border-primary">
+						<h3 style="color:dodgerblue; text-align:center">Entries</h3>
+						<ul id="entryList" class="scrollbar scrollbar-info square" style="overflow:scroll; overflow-x:hidden; overflow-y:auto; padding-left: 0;">
+						</ul>	
+					</div>
+					<div class="col-xl-9 border border-primary">
+						<button id="entryRemoveButton" onclick="removeSelectedEntry()" style="float:right; margin:10px" class="btn btn-outline-primary input-group-button">Remove</button>
+						<br />
+						<div class="input-group input-group-sm mb-3">
+							<div class="input-group-prepend">
+								<span class="input-group-text" id="inputGroup-sizing-sm" style="background-color:dodgerblue; color:white; width:110px">Username</span>
+							</div>
+							<input id="username" onchange="username_onChange()" type="text" class="form-control"/>
+						</div>
+						<div class="input-group input-group-sm mb-3">
+							<div class="input-group-prepend">
+								<span class="input-group-text" id="inputGroup-sizing-sm" style="background-color:dodgerblue; color:white; width:110px">Password</span>
+							</div>
+							<input id="password" onchange="password_onChange()" type="text" class="form-control"/>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+</div>
+</div>
+
+<script>
+window.onload = requestVault();
+var selectedDomain;
+var selectedEntry;
+var vault = new Object();
+function requestVault(){
+	clear_entryList();
+	clear_domainList();
+	document.getElementById("domainName").value = "";
+    method_get("/vault", get_callback);
+}
+
+function get_callback(){
+	if (this.readyState == 4 && this.status == 200) {
+		var xmlDoc = this.responseXML;		
+		var xml_domainList = xmlDoc.getElementsByTagName("Domain");
+		vault.Domains = [];
+		for(i = 0; i < xml_domainList.length; i++){
+			var domain = new Object();
+			domain.Name = xml_domainList[i].getElementsByTagName("Name")[0].innerHTML;
+			domain.Entries = [];
+			var xml_entryList = xml_domainList[i].getElementsByTagName("Entry");
+			for(j = 0; j < xml_entryList.length; j++){
+				var entry = new Object();
+				entry.Username = xml_entryList[j].getElementsByTagName("Username")[0].innerHTML;
+				entry.Password = xml_entryList[j].getElementsByTagName("Password")[0].innerHTML;
+				entry.PreviousPasswords = [];
+				var xml_prevpassList = xml_entryList[j].getElementsByTagName("PreviousPassword");
+				for(k = 0; k < xml_prevpassList.length; k++){
+					var prevpass = xml_prevpassList[k].innerHTML;
+					entry.PreviousPasswords.push(prevpass);
+				}
+				domain.Entries.push(entry);
+			}
+			vault.Domains.push(domain);
+		}
+		populate_domainList();
+		disableDomainView();
+    }
+}
+
+function populate_domainList(){
+	var domainListElement = document.getElementById("domainList");
+	clear_domainList();
+	for(i = 0; i < vault.Domains.length; i++){
+		var domainBttn = generateDomainButton(vault.Domains[i].Name, i);
+		domainListElement.appendChild(domainBttn);
+	}
+	var addDomainBttn = generateDomainButton("Add Domain", vault.Domains.length);
+	domainListElement.appendChild(addDomainBttn);
+}
+
+function populate_entryList(){
+	var entryListElement = document.getElementById("entryList");
+	clear_entryList();
+	for(i = 0; i < selectedDomain.Entries.length; i++){
+		var entryBttn = generateEntryButton(selectedDomain.Entries[i].Username, i);
+		entryListElement.appendChild(entryBttn);
+	}
+	var addEntryBttn = generateEntryButton("Add Entry", selectedDomain.Entries.length);
+	entryListElement.appendChild(addEntryBttn);
+}
+
+function clear_entryList(){
+	var entryListElement = document.getElementById("entryList");
+	entryListElement.innerText = "";
+}
+
+function clear_domainList(){
+	var domainListElement = document.getElementById("domainList");
+	domainListElement.innerText = "";
+}
+
+function domainButton_onClick(event){
+	if(event.target.id == vault.Domains.length){
+		var domain = new Object();
+		domain.Name = "New Domain";
+		domain.Entries = [];
+		vault.Domains.push(domain);
+		populate_domainList();
+		disableDomainView();
+		clear_entryList();
+	}
+	else{
+		showDomain(event.target.id);
+	}
+}
+
+function entryButton_onClick(event){
+	if(event.target.id == selectedDomain.Entries.length){
+		var entry = new Object();
+		entry.Username = "Username";
+		entry.Password = "";
+		entry.PreviousPasswords = [];
+		selectedDomain.Entries.push(entry);
+		populate_entryList();
+	}
+	else{
+		showEntry(event.target.id);
+	}
+}
+
+function showDomain(index){
+	selectedDomain = vault.Domains[index];
+	var domainNameElement = document.getElementById("domainName");
+	domainNameElement.value = selectedDomain.Name;
+	enableDomainView();
+	populate_entryList();
+}
+
+function showEntry(index){
+	selectedEntry = selectedDomain.Entries[index];
+	var entryUsernameElement = document.getElementById("username");
+	var entryPasswordElement = document.getElementById("password");
+	entryUsernameElement.value = selectedEntry.Username;
+	entryPasswordElement.value = selectedEntry.Password;
+	enableEntryView();
+}
+
+function removeSelectedDomain(){
+	if(selectedDomain === undefined){
+	
+	}
+	else{
+		var index = vault.Domains.indexOf(selectedDomain);
+		vault.Domains.splice(index, 1);
+		populate_domainList();
+		document.getElementById("domainName").value = "";
+		disableDomainView();
+		clear_entryList();
+	}
+}
+
+function removeSelectedEntry(){
+	if(selectedEntry === undefined){
+	
+	}
+	else{
+		var index = selectedDomain.Entries.indexOf(selectedEntry);
+		selectedDomain.Entries.splice(index, 1);
+		populate_entryList();
+		document.getElementById("username").value = "";
+		document.getElementById("password").value = "";
+		disableEntryView();
+	}
+}
+
+function domainName_onChange(){
+	if(selectedDomain === undefined){
+	
+	}
+	else{
+		selectedDomain.Name = document.getElementById("domainName").value;
+		populate_domainList();
+	}
+}
+
+function username_onChange(){
+	if(selectedEntry === undefined){
+	
+	}
+	else{
+		selectedEntry.Username = document.getElementById("username").value;
+		populate_entryList();
+	}
+}
+
+function password_onChange(){
+	if(selectedEntry === undefined){
+	
+	}
+	else{
+		selectedEntry.Password = document.getElementById("password").value;
+	}
+}
+
+function disableDomainView(){
+	document.getElementById("domainName").disabled = true;
+	document.getElementById("domainRemoveButton").disabled = true;
+	disableEntryView();
+}
+
+function enableDomainView(){
+	document.getElementById("domainName").disabled = false;
+	document.getElementById("domainRemoveButton").disabled = false;
+}
+
+function disableEntryView(){
+	document.getElementById("username").disabled = true;
+	document.getElementById("password").disabled = true;
+	document.getElementById("entryRemoveButton").disabled = true;
+	document.getElementById("username").value = "";
+	document.getElementById("password").value = "";
+}
+
+function enableEntryView(){
+	document.getElementById("username").disabled = false;
+	document.getElementById("password").disabled = false;
+	document.getElementById("entryRemoveButton").disabled = false;
+}
+
+function generateDomainButton(innerText, id){
+	var node = document.createElement("button");
+	node.classList.add("btn");
+	node.classList.add("btn-outline-primary");
+	node.classList.add("mx-auto");
+	node.classList.add("d-block");
+	node.style="width:100%";
+	node.innerText = innerText;
+	node.addEventListener("click", domainButton_onClick);
+	node.id = id;
+	return node;
+}
+
+function generateEntryButton(innerText, id){
+	var node = document.createElement("button");
+	node.classList.add("btn");
+	node.classList.add("btn-outline-primary");
+	node.classList.add("mx-auto");
+	node.classList.add("d-block");
+	node.style="width:100%";
+	node.innerText = innerText;
+	node.addEventListener("click", entryButton_onClick);
+	node.id = id;
+	return node;
+}
+
+function sendVaultData(){
+	var xmlhttp = new XMLHttpRequest();
+        xmlhttp.open("POST","vault", true);
+        var xmlDoc;
+        xmlhttp.onreadystatechange = function() {
+            if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+            xmlDoc = xmlhttp.responseXML;
+            console.log(xmlDoc);
+            }
+        };
+        xmlhttp.setRequestHeader('Content-Type', 'text/xml');
+        var xml = "";
+		xml += "<Vault>";
+		for(i = 0; i < vault.Domains.length; i++){
+			var domain = vault.Domains[i];
+			xml += "<Domain>";
+			xml += "<Name>" + domain.Name + "</Name>";
+			for(j = 0; j < domain.Entries.length; j++){
+				var entry = domain.Entries[j];
+				xml += "<Entry>";
+				xml += "<Username>" + entry.Username + "</Username>";
+				xml += "<Password>" + entry.Password + "</Password>";
+				xml += "<PreviousPasswords>";
+				for(k = 0; k < entry.PreviousPasswords.length; k++){
+					xml += "<PreviousPassword>" + entry.PreviousPasswords[k] + "</PreviousPassword>";
+				}
+				xml += "</PreviousPasswords>";
+				xml += "</Entry>";
+			}
+			xml += "</Domain>";
+		}
+		xml += "</Vault>";
+        xmlhttp.send(xml);
+}
+</script>
+
+</body>
+</html>
