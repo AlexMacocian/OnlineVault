@@ -42,7 +42,7 @@
   <ItemGroup>
     <PackageReference Include="Ceen.Httpd" Version="0.9.7" />
     <PackageReference Include="Ceen.Security" Version="0.9.7" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
   </ItemGroup>
 
   <ItemGroup>
